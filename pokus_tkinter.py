@@ -28,7 +28,7 @@ class Program:
 
         # widgets
         Label(self.root, text='Interesting text').pack()
-
+        # zmena
         # button STOP
         self.root.title('Run until I stop you.')
         Button(self.root, text='Stop', 
@@ -54,7 +54,7 @@ class Program:
         arc = c.create_arc(coor, start=0, extent=100, fill="red")
         c.pack()
 
-        # simple slider
+        # simple slider 
         s = Scale(self.root, from_=0, to=42)
         s.pack()
         # s = Scale(root, from_=0, to=200, orient=HORIZONTAL)
