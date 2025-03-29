@@ -67,6 +67,7 @@ class Game: #self.dim_x, self.dim_y stored here
     """
     def evolve_cell_value(self, array, x, y):
         # returns new value of the cells due to its neighbors
+        # print(array)
         actual_value = array[x][y]
         # differences = [[1,1],[1,0],[1,-1],[0,1],[0,-1],[-1,1],[-1,0],[-1,-1]]
         neighbors = []
@@ -95,16 +96,6 @@ class Game: #self.dim_x, self.dim_y stored here
 
         # B) GREEN cell not in fire = [1,2,3,4,5] 
         if actual_value > 0:
-            # 1. No neighbors on fire
-            # is_in_range = []
-            # for value in neighbors_values:
-            #     if value >= 0: # neighboring black cells (100,..,104) do not set the green cell on fire
-            #         is_in_range.append(True)
-            #     else:
-            #         is_in_range.append(False)
-            # if all(is_in_range): 
-            #     actual_value += 1 # regenerate slowly
-            #     return actual_value
             
             # 2. Some neighbors on fire
             negative_neighbors = []
@@ -127,6 +118,8 @@ class Game: #self.dim_x, self.dim_y stored here
                 return 100 # start the 1st of 5 regenerating cycles
             return actual_value 
 
+        raise NotImplementedError()
+
     def perform_one_sweep(self, array):  
         new_array = list(list(None for dim_y in range(len(array[0]))) 
                      for dim_x in range(len(array)))
@@ -145,24 +138,24 @@ class Game: #self.dim_x, self.dim_y stored here
 
         return self.history_of_sweeps[number]
     
-
-
-
 class Program(): # Tk()
     def __init__(self, file_name):
         self.root = Tk()
-        self.game = Game(file_name) # TODO: je TOTO SPRAVNE????
+        self.game = Game(file_name) 
         self.set_window()
         self.frame_number = 0
+        self.speed = 0
+        self.last_direction = 1
+
         if file_name is not None:
             self.dim_x, self.dim_y = self.load_dimensions(file_name)
             self.size_square = self.load_size_square(file_name)
         else:
             self.dim_x, self.dim_y = 10, 15
             self.size_square = 5
-        self.height_canv, self.width_canv = self.dim_x * self.size_square, self.dim_y * self.size_square
+        self.height_canv, self.width_canv = self.dim_y * self.size_square, self.dim_x * self.size_square
         self.set_field() # must be performed after setting self.height_canv, self.width_canv
-        self.display_sweep()
+        self.display_actual_sweep()
 
         self.root.mainloop()
 
@@ -196,9 +189,9 @@ class Program(): # Tk()
         # setting the windows size
         self.root.geometry("1100x750")
         Label(self.root, text='NO STRESS NO PROBLEM').pack()
-        # button STOP
+        # button Exit = STOP THE CODE
         self.root.title('Run until I stop you.')
-        Button(self.root, text='Stop', 
+        Button(self.root, text='Exit', 
                         width=20, command=self.root.destroy).pack(side=BOTTOM)
 
         # creating a label for name using widget Label
@@ -208,53 +201,69 @@ class Program(): # Tk()
         # creating a entry for input using widget Entry
         self.num_entry = Entry(self.root, font=('calibre',10,'normal'))
         self.num_entry.pack()
-        self.num_entry.bind("<KeyRelease>", self.submit_frame_number)
+        self.num_entry.bind("<KeyRelease>", self.update_frame_number)
 
         subframe = Frame(self.root)
         subframe.pack(  )
 
         # simple slider - it will change speed of the evolution
-        s = Scale(subframe, from_=0, to=10, orient=HORIZONTAL).pack( side = RIGHT )
+        self.s = Scale(subframe, command = self.update_speed, from_=0, to=10, orient=HORIZONTAL).pack( side = RIGHT )
         # button that increases the number       
-        Button(subframe, text = '+1', command = self.increase_frame_number).pack(side=LEFT)
-        Button(subframe, text = '-1', command = lambda: self.increase_frame_number(False)).pack(side=LEFT)
+        Button(subframe, text = '-1', command = lambda: self.update_frame_number(delta=-1)).pack(side=LEFT)
+        Button(subframe, text = '+1', command = lambda: self.update_frame_number(delta=1)).pack(side=LEFT)
+        
+        # NEW Play button
+        Button(subframe, text = 'Play right', command = lambda: self.start_animation(delta=1)).pack(side=LEFT)
+        # NEW Play button
+        Button(subframe, text = 'Play left', command = lambda: self.start_animation(delta=-1)).pack(side=LEFT)
+        
+    def update_speed(self, new_speed):
+        if new_speed == 0:
+            return
+        # if self.speed == 0 and new_speed != 0:
+        self.speed = int(new_speed)
+        self.start_animation(self.last_direction)
+        
 
-    def submit_frame_number(self, event=None): # on this level it has to have self
-
-        number_str = self.num_entry.get()
-        if number_str.isnumeric():                           
-            number = int(number_str)       # No need to save (no self. ), as not used elsewhere                              
-        else:     
-            number = self.frame_number
-            
-        print(f"Number of frame: {number}")
-        self.num_entry.delete(0,len(self.num_entry.get()))
-        self.num_entry.insert(0, number)
-        self.frame_number = number 
-
-    def increase_frame_number(self, sign=True):
+    def update_frame_number(self, event=None, delta=0 ):
         number_str = self.num_entry.get()
         if number_str.isnumeric():                           
             number = int(number_str)            
         else:     
-            number = self.frame_number
-        number += 1 if sign else -1  
-            
+            number = 0 # self.frame_number
+        number += delta 
+        self.last_direction = delta  
+
+        if number < 0:
+            number = 0
+
         self.num_entry.delete(0,len(self.num_entry.get()))
         self.num_entry.insert(0, number)
         self.frame_number = number 
-        if int(number_str) + 1 == number:
-            print(f"Increased by 1: {number}")
-        else:
-            print(f"Decreased by 1: {number}")
-        
+
+        self.display_actual_sweep()
+        self.start_animation(delta=delta)
+    
+    def start_animation(self, delta):
+        # if self.animation_is_on == True:
+        #     pass
+        if self.speed == 0:
+            pass
+            
+        else: # speed != 0
+            self.root.after(500 // self.speed, lambda : self.update_frame_number(delta=delta))
+            # NEW variable self.animation_is_on=True
+            self.animation_is_on = True
+
     def set_field(self):
+
         # creating canvas
         # TODO: check whether any initial elements in "initial.txt" are beyond the boundary? 
         self.c = Canvas(self.root, bg="gray", width=self.width_canv, height=self.height_canv)
         self.c.pack()
-
         """ Colors see here: https://cs111.wellesley.edu/archive/cs111_fall14/public_html/labs/lab12/tkintercolor.html """
+
+    def get_color(self, value):
         color = {-5: "red4",
             -4: "red3",
             -3: "red2",
@@ -271,39 +280,14 @@ class Program(): # Tk()
             3: "DarkOliveGreen3",
             4: "chartreuse3",
             5: "green"} 
-        rect1 = Square(1,1 , color[-5],  self.size_square).draw(self.c)
-        rect2 = Square(1,5 , color[-4],  self.size_square).draw(self.c)
-        rect3 = Square(2,3 , color[-3],  self.size_square).draw(self.c)
-        rect4 = Square(0,3 , color[-2],  self.size_square).draw(self.c)
-        rect5 = Square(0,3 , color[-1],  self.size_square).draw(self.c)
-        rect5 = Square(0,2 , color[100], self.size_square).draw(self.c)
-        rect6 = Square(0,4 , color[1],  self.size_square).draw(self.c)
-        rect7 = Square(2,5 , color[2],  self.size_square).draw(self.c)
-        rect8 = Square(1,2 , color[3],  self.size_square).draw(self.c)
-        rect9 = Square(4,4 , color[4],  self.size_square).draw(self.c)
-        rect10 = Square(3,5 , color[5],  self.size_square).draw(self.c)
+        return color[value]
 
     def nahodna_barva(self):
         return f"#{random.randint(0, 0xFFFFFF):06x}"
 
-    def display_sweep(self, sweep_number=0):  # will show the new canvas
-        color = {-5: "red4",
-            -4: "red3",
-            -3: "red2",
-            -2: "darkorange",
-            -1: "orange",
-            100: "black",
-            101: "black",
-            102: "black",
-            103: "black",
-            104: "black",
-            0: "black",
-            1: "DarkOliveGreen1",
-            2: "DarkOliveGreen2",
-            3: "DarkOliveGreen3",
-            4: "chartreuse3",
-            5: "green"} 
-        actual_sweep = self.game.get_sweep()
+    def display_actual_sweep(self):  # will show the new canvas
+
+        actual_sweep = self.game.get_sweep(self.frame_number)
         dim_x, dim_y = self.dim_x, self.dim_y
         for x in range(dim_x): 
             for y in range(dim_y):
@@ -311,27 +295,29 @@ class Program(): # Tk()
                 y1 = y * self.size_square
                 x2 = x1 + self.size_square
                 y2 = y1 + self.size_square
-                actual_color = color[actual_sweep[x][y]]
+                actual_color = self.get_color(actual_sweep[x][y])
                 Square(x,y,color=actual_color,size_square=self.size_square).draw(self.c)
                 # barva = self.nahodna_barva()
                 # self.c.create_rectangle(x1, y1, x2, y2, fill=barva, outline="black")
-        
+
+
+
 class Square(): 
     
     def __init__(self, field_coord_x, field_coord_y, color, size_square):
         self.field_coord_x, self.field_coord_y = field_coord_x, field_coord_y
         self.color = color
-        self.coord_x1 = ( field_coord_x ) * size_square 
-        self.coord_y1 = ( field_coord_y ) * size_square 
-        self.coord_x2 = self.coord_x1  + size_square
-        self.coord_y2 = self.coord_y1  + size_square
-        self.coords = [self.coord_x1, self.coord_y1, self.coord_x2, self.coord_y2]
+        coord_x1 = ( field_coord_x ) * size_square 
+        coord_y1 = ( field_coord_y ) * size_square 
+        coord_x2 = coord_x1  + size_square
+        coord_y2 = coord_y1  + size_square
+        self.coords = [coord_x1, coord_y1, coord_x2, coord_y2]
 
     def draw(self, canvas):
         # coordinates of the square are two numbers (position of value of the cell in the field).
         canvas.create_rectangle(*self.coords, fill=self.color)
-        canvas_width  = int(canvas.__getitem__('width'))
-        canvas_height = int(canvas.__getitem__('height'))           
+        # canvas_width  = int(canvas.__getitem__('width'))
+        # canvas_height = int(canvas.__getitem__('height'))           
         
 
 if __name__ == "__main__":
