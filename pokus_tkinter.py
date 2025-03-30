@@ -138,6 +138,9 @@ class Game: #self.dim_x, self.dim_y stored here
 
         return self.history_of_sweeps[number]
     
+    def change_value_to_red(self, number_of_frame, x, y):
+            self.history_of_sweeps[number_of_frame][x][y] = -5
+
 class Program(): # Tk()
     def __init__(self, file_name):
         self.root = Tk()
@@ -261,6 +264,8 @@ class Program(): # Tk()
         # TODO: check whether any initial elements in "initial.txt" are beyond the boundary? 
         self.c = Canvas(self.root, bg="gray", width=self.width_canv, height=self.height_canv)
         self.c.pack()
+                # Přiřazení události kliknutí
+        self.c.bind("<Button-1>", self.click)
         """ Colors see here: https://cs111.wellesley.edu/archive/cs111_fall14/public_html/labs/lab12/tkintercolor.html """
 
     def get_color(self, value):
@@ -287,6 +292,8 @@ class Program(): # Tk()
 
     def display_actual_sweep(self):  # will show the new canvas
 
+        self.sq_colors = {} # dict for saving of the square's colors
+
         actual_sweep = self.game.get_sweep(self.frame_number)
         dim_x, dim_y = self.dim_x, self.dim_y
         for x in range(dim_x): 
@@ -296,11 +303,25 @@ class Program(): # Tk()
                 x2 = x1 + self.size_square
                 y2 = y1 + self.size_square
                 actual_color = self.get_color(actual_sweep[x][y])
-                Square(x,y,color=actual_color,size_square=self.size_square).draw(self.c)
-                # barva = self.nahodna_barva()
-                # self.c.create_rectangle(x1, y1, x2, y2, fill=barva, outline="black")
+                sq = Square(x,y,color=actual_color,size_square=self.size_square).draw(self.c)
 
-
+    # Function to process the click
+    def click(self, event):
+        # Get ID of the element under the cursor
+        item = self.c.find_closest(event.x, event.y)
+        if not item:
+            return
+        item_id = item[0]
+        
+        # coords of the clicked square
+        x1, y1, x2, y2 = self.c.coords(item_id)
+        col_of_square = int(x1 // self.size_square)
+        row_of_square = int(y1 // self.size_square)
+        self.game.change_value_to_red(number_of_frame=self.frame_number, x=col_of_square, y=row_of_square)
+        
+        # The two lines below only make the square go red.
+        # self.c.itemconfig(item_id, fill="red")
+        # self.sq_colors[item_id] = "red"
 
 class Square(): 
     
