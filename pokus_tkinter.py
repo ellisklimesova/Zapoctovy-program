@@ -77,10 +77,10 @@ class Game: #self.dim_x, self.dim_y stored here
                     continue
                 neighbor_x = x + diff_x
                 neighbor_y = y + diff_y
-
-                if (0 <= neighbor_y < len(array[0])) and (0 <= neighbor_x < len(array)): 
+                # NEW - erased "0 <=" from both inequalities
+                if ( neighbor_y < len(array[0]) ) and ( neighbor_x < len(array) ): 
                     neighbors.append(array[neighbor_x][neighbor_y])    # write it into neighbors
-                    
+                
         return self.apply_rules_on_cell(neighbors, actual_value)
 
     def apply_rules_on_cell(self, neighbors_values, actual_value)->int: # returns value   
@@ -315,7 +315,7 @@ class Square():
 
     def draw(self, canvas):
         # coordinates of the square are two numbers (position of value of the cell in the field).
-        canvas.create_rectangle(*self.coords, fill=self.color)
+        canvas.create_rectangle(*self.coords, fill=self.color, width=0)
         # canvas_width  = int(canvas.__getitem__('width'))
         # canvas_height = int(canvas.__getitem__('height'))           
         
