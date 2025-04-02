@@ -210,7 +210,7 @@ class Program(): # Tk()
         subframe.pack(  )
 
         # simple slider - it will change speed of the evolution
-        self.s = Scale(subframe, command = self.update_speed, from_=0, to=10, orient=HORIZONTAL).pack( side = RIGHT )
+        self.s = Scale(subframe, command = self.update_speed, from_=0, to=3, orient=HORIZONTAL).pack( side = RIGHT )
         # button that increases the number       
         Button(subframe, text = '-1', command = lambda: self.update_frame_number(delta=-1)).pack(side=LEFT)
         Button(subframe, text = '+1', command = lambda: self.update_frame_number(delta=1)).pack(side=LEFT)
@@ -254,7 +254,7 @@ class Program(): # Tk()
             pass
             
         else: # speed != 0
-            self.root.after(500 // self.speed, lambda : self.update_frame_number(delta=delta))
+            self.root.after(100 // self.speed, lambda : self.update_frame_number(delta=delta))
             # NEW variable self.animation_is_on=True
             self.animation_is_on = True
 
@@ -269,22 +269,33 @@ class Program(): # Tk()
         """ Colors see here: https://cs111.wellesley.edu/archive/cs111_fall14/public_html/labs/lab12/tkintercolor.html """
 
     def get_color(self, value):
-        color = {-5: "red4",
-            -4: "red3",
-            -3: "red2",
-            -2: "darkorange",
-            -1: "orange",
-            100: "black",
-            101: "black",
-            102: "black",
-            103: "black",
-            104: "black",
+        color = {
+            # -5: "red4",
+            # -4: "red3",
+            # -3: "red2",
+            # -2: "darkorange",
+            # -1: "orange",
+            -5: "darkorange",
+            -4: "darkorange1",
+            -3: "darkorange2",
+            -2: "darkorange3",
+            -1: "darkorange4",
+            100: "gray15",
+            101: "gray25",
+            102: "gray35",
+            103: "gray45",
+            104: "gray55",
             0: "black",
-            1: "DarkOliveGreen1",
-            2: "DarkOliveGreen2",
-            3: "DarkOliveGreen3",
-            4: "chartreuse3",
-            5: "green"} 
+            # 1: "DarkOliveGreen4",
+            # 2: "DarkOliveGreen3",
+            # 3: "DarkOliveGreen2",
+            # 4: "DarkOliveGreen1",
+            # 5: "green"} 
+            1: "greenyellow",
+            2: "Green1",
+            3: "Green2",
+            4: "Green3",
+            5: "Green4"} 
         return color[value]
 
     def nahodna_barva(self):
