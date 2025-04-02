@@ -1,19 +1,18 @@
 """
 Keywords
-
--- slider (potahovatko)
--- timer - spousti eventy 
-"""
-"""
-On macos apriori one cannot change the buttom color.
-Hence one shall use "Button" function from tkmacosx instead.  
-Usage and instalation: https://pypi.org/project/tkmacosx/
+-- voda
+-- uloz - vyrob novy konfiguracni soubor, policko po policku projdi pole (self.actual_frame nebo neco)
+   a zapis pouze hodnoty jine, nez 5
+-- initial stav - horici bunka ma zoranzovet vsechna okolo, vc. cyklickeho (check neighborhood)
 """
 
 from tkinter import *
 import random
 
 class Game: #self.dim_x, self.dim_y stored here
+    
+    DEFAULT_DIM_X, DEFAULT_DIM_Y = 25, 25 # BY DEFAULT self.
+
     def __init__(self, file_name=None):
         if file_name is not None:
             pole = self.load_file(file_name)
@@ -29,15 +28,30 @@ class Game: #self.dim_x, self.dim_y stored here
         with open(file_name, mode="r") as file:
             lines = file.readlines()
         strange_cells = [] # cells that are not "value=5" at t=0 (coordinate_x, coordinate_y, value)
-        for line in lines:
-            if ":" in line:
-                key, value = line.split(":")
-                if "dimensions" in key:
-                    self.dimensions = list(map(int, value.split()))
-                if "square" in key:
-                    self.size_square = int(value)
-            else:
-                strange_cells.append(list(map(int, line.split())))
+        self.dimensions = None
+        self.size_square = None
+        for i,line in enumerate(lines):
+            if ":" not in line: continue
+            key, value = line.split(":")
+            if "dimensions" in key:
+                self.dimensions = tuple(map(int, value.split())) 
+            elif "square" in key:
+                self.size_square = int(value)
+            else: 
+                print(f"The line {i}: {line} does not set any valid initial data.")
+
+        if self.dimensions is None:
+            self.dimensions = (self.DEFAULT_DIM_X, self.DEFAULT_DIM_Y)    
+
+        for i, line in enumerate(lines):
+            if ":" in line: continue
+            try: 
+                té = tuple(map(int, line.split()))
+                if self.test_cell_data(té, i, line):
+                    strange_cells.append(té) 
+            except Exception as vyjimka:
+                print(f"{i}. line {line} is not a valid line, {vyjimka} thrown.") 
+
         array = list(list(5 for dim_y in range(self.dimensions[1])) 
                      for dim_x in range(self.dimensions[0]))
 
@@ -45,6 +59,23 @@ class Game: #self.dim_x, self.dim_y stored here
             array[x][y] = value
 
         return array
+
+    def test_cell_data(self, té, i, line):
+        # number of elements in line
+        if len(té) != 3: 
+            print(f"Line {i}, {té} has wrong number of elements.")
+            return False
+        # all of the initial data are within the field
+        if  té[0] >= self.dimensions[0] or té[0] < 0:
+            print(f"Line {i}, {line} contains x-coordinate out of range.")
+            return False
+        if té[1] >= self.dimensions[1] or té[1] < 0:
+            print(f"Line {i}, {line} contains y-coordinate out of range.")
+            return False
+        if té[2] not in [*range(-5,6)]+[100,101,102,103,104,200]:
+            print(f"Line {i}, {line} contains invalid cell type.")
+            return False
+        return True
 
     # TODO: Is this alright? Added 21.3.25
     def default_array(self, dim_x=20, dim_y=20):
@@ -54,10 +85,10 @@ class Game: #self.dim_x, self.dim_y stored here
         array[-1][-1] = -5
         
     def return_dimensions(self):
-        self.dim_x = len(self.history_of_sweeps[0])
-        self.dim_y = len(self.history_of_sweeps[0][0])
+        dim_x = len(self.history_of_sweeps[0])
+        dim_y = len(self.history_of_sweeps[0][0])
 
-        return self.dim_x, self.dim_y
+        return dim_x, dim_y
 
     """
     -- dimensions (2 numbers)
@@ -140,53 +171,29 @@ class Game: #self.dim_x, self.dim_y stored here
     
     def change_value_to_red(self, number_of_frame, x, y):
             self.history_of_sweeps[number_of_frame][x][y] = -5
+            while number_of_frame + 1 < len(self.history_of_sweeps):
+                self.history_of_sweeps.pop()
+                print("POP")
+            # self.history_of_sweeps = self.history_of_sweeps[:number_of_frame + 1]
 
 class Program(): # Tk()
+    
+    DEFAULT_SIZE_SQUARE = 25
+
     def __init__(self, file_name):
         self.root = Tk()
         self.game = Game(file_name) 
         self.set_window()
         self.frame_number = 0
         self.speed = 0
-        self.last_direction = 1
+        self.last_delta = 1
+        self.animation_is_on = False
 
-        if file_name is not None:
-            self.dim_x, self.dim_y = self.load_dimensions(file_name)
-            self.size_square = self.load_size_square(file_name)
-        else:
-            self.dim_x, self.dim_y = 10, 15
-            self.size_square = 5
-        self.height_canv, self.width_canv = self.dim_y * self.size_square, self.dim_x * self.size_square
-        self.set_field() # must be performed after setting self.height_canv, self.width_canv
         self.display_actual_sweep()
 
         self.root.mainloop()
 
-    def load_size_square(self, file_name):
 
-        with open(file_name, mode="r") as file:
-            lines = file.readlines()
-
-        for line in lines:
-            if ":" in line:
-                key, value = line.split(":")
-                if "square" in key:
-                    self.size_square = int(value)
-
-        return self.size_square
-    
-    def load_dimensions(self, file_name):
-        
-        with open(file_name, mode="r") as file:
-            lines = file.readlines()
-        
-        for line in lines:
-            if ":" in line:
-                key, value = line.split(":")
-                if "dimensions" in key:
-                    self.dimensions = list(map(int, value.split()))
-
-        return self.dimensions
 
     def set_window(self):
         # setting the windows size
@@ -210,24 +217,32 @@ class Program(): # Tk()
         subframe.pack(  )
 
         # simple slider - it will change speed of the evolution
-        self.s = Scale(subframe, command = self.update_speed, from_=0, to=3, orient=HORIZONTAL).pack( side = RIGHT )
+        self.s = Scale(subframe, command = self.update_speed, from_=0, to=10, orient=HORIZONTAL).pack( side = RIGHT )
         # button that increases the number       
         Button(subframe, text = '-1', command = lambda: self.update_frame_number(delta=-1)).pack(side=LEFT)
         Button(subframe, text = '+1', command = lambda: self.update_frame_number(delta=1)).pack(side=LEFT)
         
+        self.dim_x, self.dim_y = self.game.dimensions
+
+        if self.game.size_square is not None:
+            self.size_square = self.game.size_square
+        else:
+            self.size_square = self.DEFAULT_SIZE_SQUARE
+        self.height_canv, self.width_canv = self.dim_y * self.size_square, self.dim_x * self.size_square
+        self.set_field() # must be performed after setting self.height_canv, self.width_canv
+
         # NEW Play button
-        Button(subframe, text = 'Play right', command = lambda: self.start_animation(delta=1)).pack(side=LEFT)
-        # NEW Play button
-        Button(subframe, text = 'Play left', command = lambda: self.start_animation(delta=-1)).pack(side=LEFT)
+        # Button(subframe, text = 'Play right', command = lambda: self.start_animation(delta=1)).pack(side=LEFT)
+        # # NEW Play button
+        # Button(subframe, text = 'Play left', command = lambda: self.start_animation(delta=-1)).pack(side=LEFT)
         
     def update_speed(self, new_speed):
         if new_speed == 0:
             return
         # if self.speed == 0 and new_speed != 0:
         self.speed = int(new_speed)
-        self.start_animation(self.last_direction)
+        self.schedule_animation()
         
-
     def update_frame_number(self, event=None, delta=0 ):
         number_str = self.num_entry.get()
         if number_str.isnumeric():                           
@@ -235,7 +250,7 @@ class Program(): # Tk()
         else:     
             number = 0 # self.frame_number
         number += delta 
-        self.last_direction = delta  
+        self.last_delta = delta  
 
         if number < 0:
             number = 0
@@ -245,28 +260,36 @@ class Program(): # Tk()
         self.frame_number = number 
 
         self.display_actual_sweep()
-        self.start_animation(delta=delta)
+        # self.animation_is_on = False
+        self.schedule_animation()
     
-    def start_animation(self, delta):
-        # if self.animation_is_on == True:
-        #     pass
+    def schedule_animation(self):
         if self.speed == 0:
-            pass
-            
-        else: # speed != 0
-            self.root.after(100 // self.speed, lambda : self.update_frame_number(delta=delta))
-            # NEW variable self.animation_is_on=True
+            return
+
+        if not self.animation_is_on:
             self.animation_is_on = True
+            self.root.after(2000 // 2**(self.speed), self.perform_animation)
+
+    def perform_animation(self):
+        self.animation_is_on = False
+        self.update_frame_number(delta=self.last_delta)
+
+    def start_animation(self, delta):
+        if self.animation_is_on:
+            return
+        if self.speed == 0:
+            return
+        self.animation_is_on = True
+        self.root.after(500 // self.speed, lambda : self.update_frame_number(delta=delta))
 
     def set_field(self):
 
         # creating canvas
         # TODO: check whether any initial elements in "initial.txt" are beyond the boundary? 
-        self.c = Canvas(self.root, bg="gray", width=self.width_canv, height=self.height_canv)
-        self.c.pack()
-                # Přiřazení události kliknutí
-        self.c.bind("<Button-1>", self.click)
-        """ Colors see here: https://cs111.wellesley.edu/archive/cs111_fall14/public_html/labs/lab12/tkintercolor.html """
+        self.canvas = Canvas(self.root, bg="gray", width=self.width_canv, height=self.height_canv)
+        self.canvas.pack()
+        self.canvas.bind("<Button-1>", self.click)
 
     def get_color(self, value):
         color = {
@@ -303,7 +326,7 @@ class Program(): # Tk()
 
     def display_actual_sweep(self):  # will show the new canvas
 
-        self.sq_colors = {} # dict for saving of the square's colors
+        self.canvas.delete("all")
 
         actual_sweep = self.game.get_sweep(self.frame_number)
         dim_x, dim_y = self.dim_x, self.dim_y
@@ -314,25 +337,23 @@ class Program(): # Tk()
                 x2 = x1 + self.size_square
                 y2 = y1 + self.size_square
                 actual_color = self.get_color(actual_sweep[x][y])
-                sq = Square(x,y,color=actual_color,size_square=self.size_square).draw(self.c)
+                sq = Square(x,y,color=actual_color,size_square=self.size_square).draw(self.canvas)
 
     # Function to process the click
     def click(self, event):
         # Get ID of the element under the cursor
-        item = self.c.find_closest(event.x, event.y)
+        item = self.canvas.find_closest(event.x, event.y)
         if not item:
             return
         item_id = item[0]
         
         # coords of the clicked square
-        x1, y1, x2, y2 = self.c.coords(item_id)
+        x1, y1, x2, y2 = self.canvas.coords(item_id)
         col_of_square = int(x1 // self.size_square)
         row_of_square = int(y1 // self.size_square)
         self.game.change_value_to_red(number_of_frame=self.frame_number, x=col_of_square, y=row_of_square)
-        
-        # The two lines below only make the square go red.
-        # self.c.itemconfig(item_id, fill="red")
-        # self.sq_colors[item_id] = "red"
+        self.display_actual_sweep()
+
 
 class Square(): 
     
